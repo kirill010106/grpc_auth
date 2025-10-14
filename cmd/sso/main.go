@@ -3,7 +3,11 @@ package main
 import (
 	"log/slog"
 	"os"
-	"protos/internal/config"
+	"os/signal"
+	"syscall"
+
+	"github.com/kirill010106/grpc_auth/internal/app"
+	"github.com/kirill010106/grpc_auth/internal/config"
 )
 
 const (
@@ -17,6 +21,21 @@ func main() {
 	cfg := config.MustLoad()
 
 	log := setupLogger(cfg.Env)
+
+	application := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
+
+	go func() {
+		application.GRPCServer.MustRun()
+	}()
+
+	stop := make(chan os.Signal, 1)
+
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	<-stop
+
+	application.GRPCServer.Stop()
+	log.Info("Gracefully stopped")
 }
 
 func setupLogger(env string) *slog.Logger {
