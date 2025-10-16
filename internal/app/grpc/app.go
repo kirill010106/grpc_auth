@@ -54,7 +54,7 @@ func New(log *slog.Logger, authService authgrpc.Auth, port int) *App {
 }
 
 func (a *App) MustRun() {
-	if err := a.Run; err != nil {
+	if err := a.Run(); err != nil {
 		panic(err)
 	}
 }
