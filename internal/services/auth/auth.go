@@ -142,7 +142,7 @@ func (a *Auth) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 
 	log := a.log.With(
 		slog.String("op", op),
-		slog.Int64("user_od", userID),
+		slog.Int64("user_id", userID),
 	)
 
 	log.Info("checking if user is admin")

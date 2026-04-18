@@ -24,13 +24,17 @@ func main() {
 		panic("storage-path is required")
 	}
 
-	if storagePath == "" {
-		panic("migration-path is required")
+	if migrationsPath == "" {
+		panic("migrations-path is required")
+	}
+
+	if migrationsTable == "" {
+		migrationsTable = "migrations"
 	}
 
 	m, err := migrate.New(
 		"file://"+migrationsPath,
-		fmt.Sprintf("sqlite3://%s?x=migrations-table=%s", storagePath, migrationsTable),
+		fmt.Sprintf("sqlite3://%s?x-migrations-table=%s", storagePath, migrationsTable),
 	)
 	if err != nil {
 		panic(err)

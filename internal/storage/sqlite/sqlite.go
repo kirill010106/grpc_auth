@@ -23,6 +23,10 @@ func New(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// SQLite works best with a small connection pool.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
 	return &Storage{db: db}, nil
 }
 
@@ -33,6 +37,7 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() { _ = stmt.Close() }()
 
 	res, err := stmt.ExecContext(ctx, email, passHash)
 	if err != nil {
@@ -53,6 +58,34 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 	return id, nil
 }
 
+func (s *Storage) SaveApp(ctx context.Context, name string, secret string) (int64, error) {
+	const op = "storage.sqlite.SaveApp"
+
+	stmt, err := s.db.Prepare("INSERT INTO apps(name, secret) VALUES (?, ?)")
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+	defer func() { _ = stmt.Close() }()
+
+	res, err := stmt.ExecContext(ctx, name, secret)
+	if err != nil {
+		var sqliteErr sqlite3.Error
+
+		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrAppExists)
+		}
+
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return id, nil
+}
+
 func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	const op = "storage.sqlite.User"
 
@@ -60,6 +93,7 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() { _ = stmt.Close() }()
 
 	row := stmt.QueryRowContext(ctx, email)
 
@@ -84,6 +118,7 @@ func (s *Storage) App(ctx context.Context, id int) (models.App, error) {
 	if err != nil {
 		return models.App{}, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() { _ = stmt.Close() }()
 
 	row := stmt.QueryRowContext(ctx, id)
 
@@ -108,6 +143,7 @@ func (s *Storage) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() { _ = stmt.Close() }()
 
 	row := stmt.QueryRowContext(ctx, userID)
 

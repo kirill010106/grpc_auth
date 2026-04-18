@@ -13,3 +13,19 @@ tasks:
     desc: "Generate code from proto files"  
     cmds:  ## Тут описываем необходимые bash-команды
       - protoc -I proto proto/sso/*.proto --go_out=./gen/go/ --go_opt=paths=source_relative --go-grpc_out=./gen/go/ --go-grpc_opt=paths=source_relative
+  migrate:
+    desc: "Apply database migrations"
+    cmds:
+      - go run ./cmd/migrator --storage-path ./storage/sso.db --migrations-path ./migrations --migrations-table migrations
+  app-create:
+    desc: "Create an app and secret"
+    cmds:
+      - go run ./cmd/app --config ./config/config_local.yaml --name dev-app
+  run:
+    desc: "Run gRPC server"
+    cmds:
+      - go run ./cmd/sso --config ./config/config_local.yaml
+  test:
+    desc: "Run tests"
+    cmds:
+      - go test ./...
